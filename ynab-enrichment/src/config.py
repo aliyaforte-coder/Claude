@@ -14,10 +14,6 @@ class Settings(BaseSettings):
     simplefin_setup_token: str = ""
     simplefin_access_url: str = ""
 
-    # Privacy.com
-    privacy_api_key: str = ""
-    privacy_base_url: str = "https://api.privacy.com/v1"
-
     # Amazon
     amazon_export_path: str = "./data/amazon-order-history.csv"
 

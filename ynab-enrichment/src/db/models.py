@@ -47,5 +47,4 @@ class HealthStatus(BaseModel):
     status: str
     ynab: str = "unknown"
     simplefin: str = "unknown"
-    privacy: str = "unknown"
     amazon_csv: str = "unknown"

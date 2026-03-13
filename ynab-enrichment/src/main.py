@@ -10,19 +10,17 @@ from fastapi.responses import JSONResponse
 from src.api.routes import init_clients, router
 from src.db.database import close_db, get_db
 from src.enrichment.categorizer import Categorizer
-from src.services.privacy import PrivacyClient
 from src.services.simplefin import SimpleFinClient
 from src.services.ynab import YNABClient
 from src.utils.logging import logger
 
 _ynab: YNABClient | None = None
 _simplefin: SimpleFinClient | None = None
-_privacy: PrivacyClient | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _ynab, _simplefin, _privacy
+    global _ynab, _simplefin
 
     logger.info("Starting YNAB Enrichment API")
 
@@ -32,7 +30,6 @@ async def lifespan(app: FastAPI):
     # Initialize API clients
     _ynab = YNABClient()
     _simplefin = SimpleFinClient()
-    _privacy = PrivacyClient()
 
     # Initialize categorizer
     categorizer = Categorizer()
@@ -42,7 +39,7 @@ async def lifespan(app: FastAPI):
         logger.warning("Failed to initialize categorizer (will retry on first use): %s", e)
 
     # Share clients with routes
-    init_clients(_ynab, _simplefin, _privacy, categorizer)
+    init_clients(_ynab, _simplefin, categorizer)
 
     logger.info("YNAB Enrichment API ready")
     yield
@@ -51,13 +48,12 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down YNAB Enrichment API")
     await _ynab.close()
     await _simplefin.close()
-    await _privacy.close()
     await close_db()
 
 
 app = FastAPI(
     title="YNAB Transaction Enrichment API",
-    description="Enrich and validate YNAB transactions using SimpleFin, Privacy.com, and Amazon order data.",
+    description="Enrich and validate YNAB transactions using SimpleFin and Amazon order data.",
     version="1.0.0",
     lifespan=lifespan,
 )

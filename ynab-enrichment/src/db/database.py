@@ -138,7 +138,7 @@ async def mark_enriched(ynab_transaction_id: str, module: str) -> None:
 async def get_last_runs() -> dict:
     db = await get_db()
     results = {}
-    for module in ("validate", "privacy", "amazon"):
+    for module in ("validate", "amazon"):
         cursor = await db.execute(
             "SELECT * FROM run_history WHERE module = ? ORDER BY id DESC LIMIT 1",
             (module,),

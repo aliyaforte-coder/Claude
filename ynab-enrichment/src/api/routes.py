@@ -13,10 +13,8 @@ from src.db.database import get_last_runs
 from src.db.models import EnrichmentSummary, HealthStatus, ValidationReport
 from src.enrichment.amazon_enricher import enrich_amazon_transactions
 from src.enrichment.categorizer import Categorizer
-from src.enrichment.privacy_enricher import enrich_privacy_transactions
 from src.enrichment.validator import validate_transactions
 from src.services.amazon import AmazonParser
-from src.services.privacy import PrivacyClient
 from src.services.simplefin import SimpleFinClient
 from src.services.ynab import YNABClient
 from src.utils.logging import logger
@@ -26,20 +24,17 @@ router = APIRouter(dependencies=[Depends(verify_api_key)])
 # Shared client instances — initialized in lifespan
 _ynab: YNABClient | None = None
 _simplefin: SimpleFinClient | None = None
-_privacy: PrivacyClient | None = None
 _categorizer: Categorizer | None = None
 
 
 def init_clients(
     ynab: YNABClient,
     simplefin: SimpleFinClient,
-    privacy: PrivacyClient,
     categorizer: Categorizer,
 ) -> None:
-    global _ynab, _simplefin, _privacy, _categorizer
+    global _ynab, _simplefin, _categorizer
     _ynab = ynab
     _simplefin = simplefin
-    _privacy = privacy
     _categorizer = categorizer
 
 
@@ -66,21 +61,6 @@ async def validate(
         simplefin_client=_simplefin,
         start_date=start_date,
         end_date=end_date,
-    )
-
-
-@router.post("/enrich/privacy", response_model=EnrichmentSummary)
-async def enrich_privacy(
-    days_back: int = Query(default=30, ge=1, le=365),
-    dry_run: bool = Query(default=True),
-) -> EnrichmentSummary:
-    """Run Privacy.com enrichment on recent YNAB transactions."""
-    return await enrich_privacy_transactions(
-        ynab_client=_ynab,
-        privacy_client=_privacy,
-        categorizer=_categorizer,
-        days_back=days_back,
-        dry_run=dry_run,
     )
 
 
@@ -116,32 +96,6 @@ async def enrich_amazon(
             temp_path.unlink()
 
 
-@router.post("/enrich/all")
-async def enrich_all(
-    days_back: int = Query(default=30, ge=1, le=365),
-    dry_run: bool = Query(default=True),
-) -> dict[str, Any]:
-    """Run all enrichment modules in sequence."""
-    privacy_result = await enrich_privacy_transactions(
-        ynab_client=_ynab,
-        privacy_client=_privacy,
-        categorizer=_categorizer,
-        days_back=days_back,
-        dry_run=dry_run,
-    )
-    amazon_result = await enrich_amazon_transactions(
-        ynab_client=_ynab,
-        amazon_parser=AmazonParser(),
-        categorizer=_categorizer,
-        days_back=days_back,
-        dry_run=dry_run,
-    )
-    return {
-        "privacy": privacy_result.model_dump(),
-        "amazon": amazon_result.model_dump(),
-    }
-
-
 @router.get("/health", response_model=HealthStatus)
 async def health() -> HealthStatus:
     """Health check — tests connectivity to all external APIs."""
@@ -153,13 +107,10 @@ async def health() -> HealthStatus:
     simplefin_ok = await _simplefin.health_check() if _simplefin else False
     status.simplefin = "connected" if simplefin_ok else "error"
 
-    privacy_ok = await _privacy.health_check() if _privacy else False
-    status.privacy = "connected" if privacy_ok else "error"
-
     parser = AmazonParser()
     status.amazon_csv = "found" if parser.csv_exists() else "not_found"
 
-    if not all([ynab_ok, simplefin_ok, privacy_ok]):
+    if not all([ynab_ok, simplefin_ok]):
         status.status = "degraded"
 
     return status
