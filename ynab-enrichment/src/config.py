@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     simplefin_access_url: str = ""
 
     # Amazon
-    amazon_export_path: str = "./data/amazon-order-history.csv"
+    amazon_export_path: str = "./data/amazon_order_history.csv"
 
     # API security
     api_key: str = ""
