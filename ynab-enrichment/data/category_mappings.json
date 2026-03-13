@@ -1,0 +1,13 @@
+{
+  "merchant_to_category": {
+    "Costco": null,
+    "Shell": null,
+    "Netflix": null
+  },
+  "amazon_category_to_ynab": {
+    "Electronics": null,
+    "Grocery": null,
+    "Books": null,
+    "default": null
+  }
+}
