@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, Query, UploadFile, File
 
@@ -22,9 +22,9 @@ from src.utils.logging import logger
 router = APIRouter(dependencies=[Depends(verify_api_key)])
 
 # Shared client instances — initialized in lifespan
-_ynab: YNABClient | None = None
-_simplefin: SimpleFinClient | None = None
-_categorizer: Categorizer | None = None
+_ynab = None
+_simplefin = None
+_categorizer = None
 
 
 def init_clients(
@@ -40,11 +40,11 @@ def init_clients(
 
 @router.post("/validate", response_model=ValidationReport)
 async def validate(
-    start_date: str = Query(
+    start_date: Optional[str] = Query(
         default=None,
         description="Start date (YYYY-MM-DD). Defaults to 30 days ago.",
     ),
-    end_date: str = Query(
+    end_date: Optional[str] = Query(
         default=None,
         description="End date (YYYY-MM-DD). Defaults to today.",
     ),
@@ -68,12 +68,12 @@ async def validate(
 async def enrich_amazon(
     days_back: int = Query(default=90, ge=1, le=365),
     dry_run: bool = Query(default=True),
-    csv_path: str | None = Query(default=None, description="Path to Amazon CSV file"),
-    csv_file: UploadFile | None = File(default=None, description="Upload Amazon CSV"),
+    csv_path: Optional[str] = Query(default=None, description="Path to Amazon CSV file"),
+    csv_file: Optional[UploadFile] = File(default=None, description="Upload Amazon CSV"),
 ) -> EnrichmentSummary:
     """Run Amazon order enrichment on recent YNAB transactions."""
     actual_path = csv_path
-    temp_path: Path | None = None
+    temp_path = None
 
     if csv_file:
         # Save uploaded file temporarily
@@ -117,6 +117,6 @@ async def health() -> HealthStatus:
 
 
 @router.get("/status")
-async def status() -> dict[str, Any]:
+async def status() -> Dict[str, Any]:
     """Return last run timestamps and results for each module."""
     return await get_last_runs()
